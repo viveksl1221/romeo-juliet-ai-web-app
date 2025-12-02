@@ -3,7 +3,8 @@ import { Message, Persona } from "../types";
 import { ROMEO_SYSTEM_INSTRUCTION, JULIET_SYSTEM_INSTRUCTION } from "../constants";
 
 // Initialize the client. API_KEY is expected to be in the environment.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Remove top-level initialization
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const MODEL_NAME = "gemini-2.5-flash";
 
@@ -17,10 +18,32 @@ export const generatePersonaResponse = async (
   currentHistory: Message[],
   activePersona: Persona
 ): Promise<string> => {
-  
+
+  // Safe API Key access
+  let apiKey = '';
+  try {
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env?.API_KEY) {
+      // @ts-ignore
+      apiKey = process.env.API_KEY;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  if (!apiKey) {
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  }
+
+  if (!apiKey) {
+    throw new Error("API Key not found. Please set VITE_GEMINI_API_KEY in .env");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   // 1. Select the correct system instruction
-  const systemInstruction = activePersona === 'romeo' 
-    ? ROMEO_SYSTEM_INSTRUCTION 
+  const systemInstruction = activePersona === 'romeo'
+    ? ROMEO_SYSTEM_INSTRUCTION
     : JULIET_SYSTEM_INSTRUCTION;
 
   // 2. Format history into Gemini `Content` objects
