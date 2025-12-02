@@ -9,13 +9,24 @@ import { Message, Persona, ThemeConfig } from './types';
 import { THEMES, INITIAL_MESSAGE_ROMEO, INITIAL_MESSAGE_JULIET } from './constants';
 
 const App: React.FC = () => {
+  // Initialize state from localStorage if available
   const [activePersona, setActivePersona] = useState<Persona>('romeo');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('chat_history');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize with a greeting from the default persona (Romeo)
+  // Save messages to localStorage whenever they change
   useEffect(() => {
-    // Only set initial message if empty
+    localStorage.setItem('chat_history', JSON.stringify(messages));
+  }, [messages]);
+
+  // Initialize with a greeting if empty (and nothing in storage)
+  useEffect(() => {
     if (messages.length === 0) {
       setMessages([
         {
@@ -33,9 +44,19 @@ const App: React.FC = () => {
   const handleTogglePersona = (persona: Persona) => {
     if (persona === activePersona) return;
     setActivePersona(persona);
+  };
 
-    // Optional: Could add a system message indicating the switch, but cleaner to just switch UI context
-    // and let the next response come from the new persona.
+  const handleClearChat = () => {
+    localStorage.removeItem('chat_history');
+    setMessages([
+      {
+        id: uuidv4(),
+        role: 'model',
+        text: activePersona === 'romeo' ? INITIAL_MESSAGE_ROMEO : INITIAL_MESSAGE_JULIET,
+        persona: activePersona,
+        timestamp: Date.now(),
+      }
+    ]);
   };
 
   const handleSendMessage = async (text: string) => {
@@ -85,7 +106,7 @@ const App: React.FC = () => {
 
       {/* Sticky Header Section combining Title and Toggle */}
       <div className={`sticky top-0 z-20 backdrop-blur-md bg-opacity-95 border-b transition-colors duration-500 ${currentTheme.primaryBg} ${currentTheme.borderColor}`}>
-        <Header activePersona={activePersona} />
+        <Header activePersona={activePersona} onClearChat={handleClearChat} />
         <PersonaToggle
           activePersona={activePersona}
           onToggle={handleTogglePersona}
